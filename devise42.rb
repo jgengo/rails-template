@@ -1,52 +1,51 @@
 RAILS_REQUIREMENT = "~>6.0.0".freeze
 
-GEMS = {
-  "haml-rails": "~> 2.0",
-  "friendly_id": "~> 5.4",
-  "devise": "~> 4.8",
-  "omniauth-marvin": "~> 1.2"
-}.freeze
+def add_gems
+  gem "haml-rails", "~> 2.0"
+  gem "friendly_id", "~> 5.4"
+  gem "devise", "~> 4.8"
+  gem "omniauth-marvin", "~> 1.2"
 
-GEMS_DEV = { 
-  "dotenv-rails": "~> 2.7",
-  "rspec-rails": "~> 5.0"
-}.freeze
+  gem_group :development, :test do
+    gem "dotenv-rails", "~> 2.7"
+    gem "rspec-rails", "~> 5.0"
+  end
+end
+
 
 # -- 
 
 def apply_template!
   assert_minimum_rails_version
-
+  
   run "spring stop"
-  del_comment 'Gemfile'
   
   add_gems
-  add_bootstrap_n_fa
-  add_haml
-  add_friendly_id
-  add_home
-  add_users
-  add_rspec
-
-  do_git
 
   after_bundle do 
+    del_comment 'Gemfile'
+
+    add_bootstrap_n_fa
+    add_haml
+    add_friendly_id
+    add_home
+    add_users
+    add_rspec
+
+    do_git
+
+    rails_command "db:migrate"
+
     say "---"
     say 
     say "App successfully created!", :blue
     say 
-    say "Gems installed:", :green 
-    GEMS.each { |k, _| say "  - #{k}"}
-    GEMS_DEV.each { |k, _| say "  - #{k}" }
-    say 
     say "To get started with your new app:", :green
     say "  - cd #{app_name}"
     say "  - Update config/database.yml with your database credentials"
-    say "  - rails db:create db:migrate"
     say "  - set your FT_ID and FT_SECRET into your .env with credentials generated here: https://profile.intra.42.fr/oauth/applications"
   end
 end
-
 
 
 def assert_minimum_rails_version
@@ -72,12 +71,15 @@ def add_haml
 end
 
 def add_home
-  generate "controller Home index"
+  generate :controller, "Home index"
   gsub_file 'config/routes.rb', /^\s*get\s*'home\/index'$/, "  root to: 'home#index'"
 end
 
 def add_friendly_id
   generate "friendly_id"
+
+  gsub_file 'config/initializers/friendly_id.rb', '# config.use :finders', 'config.use :finders'
+  gsub_file 'config/initializers/friendly_id.rb', '# config.use :slugged', 'config.use :slugged'
 end
 
 def add_rspec
@@ -85,17 +87,6 @@ def add_rspec
   run "rm -rf test" if yes?("Do you want to remove the /test directory? [Y/n]")
 end
 
-def add_gems
-  GEMS.each do |k, v| 
-    gem k.to_s, v
-  end
-
-  gem_group :development, :test do
-    GEMS_DEV.each do |k, v|
-      gem k.to_s, v
-    end
-  end
-end
 
 
 def add_bootstrap_n_fa
@@ -124,7 +115,7 @@ def add_users
 HAML
     end
 
-  generate :devise, "User", "first_name", "last_name", "login"
+  generate :devise, "User", "slug:string:index", "first_name:string", "last_name:string", "login:string"
 
   generate "devise:controllers users -c=omniauth_callbacks"
 
