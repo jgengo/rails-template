@@ -1,4 +1,4 @@
-<h1 align="center"><code>MacInfo Server</code></h1>
+<h1 align="center"><code>rails-template</code></h1>
 
 <div align="center">
   <sub>Created by <a href="https://github.com/jgengo">Jordane Gengo (Titus)</a></sub>
@@ -17,6 +17,6 @@ For example, to setup a Rails app with 42 oauth with devise and omniauth-marvin:
 rails new -m https://raw.githubusercontent.com/jgengo/rails-template/master/devise42.rb new_app
 ```
 
---- 
+# Contribution 
 
 Feel free to contribute if you want to add more templates or even correct some mistakes from my hand, contribution are always welcome!
