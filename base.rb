@@ -3,6 +3,11 @@ GEMS = {
   "friendly_id": "~> 5.4"
 }
 
+GEMS_DEV = { 
+  "dotenv-rails": "~> 2.7",
+  "rspec-rails": "~> 5.0"
+}
+
 def yarn(lib) 
   run("yarn add #{lib}") 
 end
@@ -11,8 +16,8 @@ def stop_spring
   run "spring stop"
 end
 
-def del_comment_gemfile
-  gsub_file('Gemfile', /^\s*#.*$\n/, '')
+def del_comment(file)
+  gsub_file(file, /^\s*#.*$\n/, '')
 end
 
 def add_haml
@@ -32,6 +37,13 @@ def add_gems
   GEMS.each do |k, v| 
     gem k.to_s, v
   end
+
+  gem_group :development, :test do
+    GEMS_DEV.each do |k, v|
+      gem k.to_s, v
+    end
+  end
+  
 end
 
 def add_bootstrap_n_fa
@@ -50,7 +62,7 @@ end
 
 after_bundle do
   stop_spring
-  del_comment_gemfile
+  del_comment('Gemfile')
   add_gems
 
   add_bootstrap_n_fa
@@ -75,6 +87,7 @@ after_bundle do
   say 
   say "Gems installed:", :green 
   GEMS.each { |k, _| say "  - #{k}"}
+  GEMS_DEV.each { |k, _| say "  - #{k}" }
   say 
   say "To get started with your new app:", :green
   say "  - cd #{app_name}"
