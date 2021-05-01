@@ -11,7 +11,7 @@
 
 I am using this repo to store my Rails template I am using mostly for my katas training exercises, but over-time I'm planing to make it my new norm and use it more often.
 
-For example, to setup a Rails app with 42 oauth with devise and omniauth-marvin:
+For example, to setup a Rails app with haml template, bootstrap, friendly_id, 42 oauth with devise and omniauth-marvin:
 
 ```bash
 rails new -m https://raw.githubusercontent.com/jgengo/rails-template/master/devise42.rb new_app
