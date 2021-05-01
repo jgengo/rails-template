@@ -1,21 +1,66 @@
+RAILS_REQUIREMENT = "~>6.0.0".freeze
+
 GEMS = {
   "haml-rails": "~> 2.0",
   "friendly_id": "~> 5.4",
   "devise": "~> 4.8",
   "omniauth-marvin": "~> 1.2"
-}
+}.freeze
 
 GEMS_DEV = { 
   "dotenv-rails": "~> 2.7",
   "rspec-rails": "~> 5.0"
-}
+}.freeze
+
+# -- 
+
+def apply_template!
+  assert_minimum_rails_version
+
+  run "spring stop"
+  del_comment 'Gemfile'
+  
+  add_gems
+  add_bootstrap_n_fa
+  add_haml
+  add_friendly_id
+  add_home
+  add_users
+  add_rspec
+
+  do_git
+
+  after_bundle do 
+    say "---"
+    say 
+    say "App successfully created!", :blue
+    say 
+    say "Gems installed:", :green 
+    GEMS.each { |k, _| say "  - #{k}"}
+    GEMS_DEV.each { |k, _| say "  - #{k}" }
+    say 
+    say "To get started with your new app:", :green
+    say "  - cd #{app_name}"
+    say "  - Update config/database.yml with your database credentials"
+    say "  - rails db:create db:migrate"
+    say "  - set your FT_ID and FT_SECRET into your .env with credentials generated here: https://profile.intra.42.fr/oauth/applications"
+  end
+end
+
+
+
+def assert_minimum_rails_version
+  requirement = Gem::Requirement.new(RAILS_REQUIREMENT)
+  rails_version = Gem::Version.new(Rails::VERSION::STRING)
+  return if requirement.satisfied_by?(rails_version)
+
+  prompt = "This template requires Rails #{RAILS_REQUIREMENT}. "\
+            "You are using #{rails_version}. Continue anyway? [Y/n]"
+  exit 1 if no?(prompt)
+end
 
 def yarn(lib) 
   run("yarn add #{lib}") 
-end
-
-def stop_spring
-  run "spring stop"
 end
 
 def del_comment(file)
@@ -35,6 +80,11 @@ def add_friendly_id
   generate "friendly_id"
 end
 
+def add_rspec
+  generate "rspec:install"
+  run "rm -rf test" if yes?("Do you want to remove the /test directory? [Y/n]")
+end
+
 def add_gems
   GEMS.each do |k, v| 
     gem k.to_s, v
@@ -45,33 +95,28 @@ def add_gems
       gem k.to_s, v
     end
   end
-  
 end
 
-def add_bootstrap_n_fa
-  yarn 'bootstrap@next'
-  yarn '@popperjs/core'
-  yarn '@fortawesome/fontawesome-free'
 
-  inject_into_file 'app/javascript/packs/application.js', after: "// that code so it'll be compiled.\n" do <<-'EOF'
+def add_bootstrap_n_fa
+  yarn 'bootstrap@next @popperjs/core @fortawesome/fontawesome-free'
+
+  inject_into_file 'app/javascript/packs/application.js', after: "// that code so it'll be compiled.\n" do <<-JAVASCRIPT
 
 import 'bootstrap/dist/js/bootstrap';
 import 'bootstrap/dist/css/bootstrap';
 import '@fortawesome/fontawesome-free/css/all';
-EOF
+JAVASCRIPT
   end
 end
 
 def add_users
-  # Install Devise
   generate "devise:install"
 
-  # Configure Devise
   environment "config.action_mailer.default_url_options = { host: 'localhost', port: 3000 }",
               env: 'development'
 
-  # poor alert system #TODO improve that shit
-  inject_into_file 'app/views/layouts/application.html.haml', after: "  %body\n" do <<-'HAML'
+  inject_into_file 'app/views/layouts/application.html.haml', after: "  %body\n" do <<-HAML
     %p.notice= notice
     %p.alert= alert
     = link_to "Sign in with 42", user_marvin_omniauth_authorize_path unless current_user
@@ -79,13 +124,13 @@ def add_users
 HAML
     end
 
-  # Create Devise User
   generate :devise, "User", "first_name", "last_name", "login"
 
   generate "devise:controllers users -c=omniauth_callbacks"
 
-  del_comment('app/controllers/users/omniauth_callbacks_controller.rb')
-  insert_into_file 'app/controllers/users/omniauth_callbacks_controller.rb', before: /^end$/ do <<-'RUBY'
+  del_comment 'app/controllers/users/omniauth_callbacks_controller.rb'
+  
+  insert_into_file 'app/controllers/users/omniauth_callbacks_controller.rb', before: /^end$/ do <<-RUBY
 
   def marvin
     @user = User.from_omniauth(request.env["omniauth.auth"])
@@ -114,9 +159,9 @@ RUBY
   gsub_file 'app/models/user.rb', /^\s*devise.*$\n/, "  devise :omniauthable, omniauth_providers: [:marvin]\n"
   gsub_file 'app/models/user.rb', /^\s*:recoverable.*$\n/, ''
 
-  del_comment('app/models/user.rb')
+  del_comment 'app/models/user.rb'
   
-  insert_into_file 'app/models/user.rb', after: "  devise :omniauthable, omniauth_providers: [:marvin]\n" do <<-"RUBY"
+  insert_into_file 'app/models/user.rb', after: "  devise :omniauthable, omniauth_providers: [:marvin]\n" do <<-RUBY
 
   def self.from_omniauth(auth)
     where(login: auth.info.login).first_or_create do |user|
@@ -136,31 +181,22 @@ RUBY
     gsub_file migration, /^\s*add_index\s.*:users,\s.*:reset_password_token.*$/, ""
   end
 
+  del_comment('config/routes.rb')
+
   gsub_file 'config/routes.rb', /^\s*devise.*$/, "  devise_for :users, controllers: { omniauth_callbacks: \"users/omniauth_callbacks\" }"
     
-  insert_into_file 'config/routes.rb', after: /^\s*devise_for :users.*\n/ do <<-'RUBY'
+  insert_into_file 'config/routes.rb', after: /^\s*devise_for :users.*\n/ do <<-RUBY
   devise_scope :user do
     delete 'sign_out', to: 'devise/sessions#destroy', as: :destroy_user_session
   end
 
-  # - 
 
 RUBY
   end
 
 end
 
-after_bundle do
-  stop_spring
-  del_comment('Gemfile')
-  add_gems
-
-  add_bootstrap_n_fa
-  add_haml
-  add_friendly_id
-  add_home
-  add_users
-
+def do_git
   unless ENV["SKIP_GIT"]
     git :init
     git add: "."
@@ -171,18 +207,7 @@ after_bundle do
       puts e.message
     end
   end
-
-  say "---"
-  say 
-  say "App successfully created!", :blue
-  say 
-  say "Gems installed:", :green 
-  GEMS.each { |k, _| say "  - #{k}"}
-  GEMS_DEV.each { |k, _| say "  - #{k}" }
-  say 
-  say "To get started with your new app:", :green
-  say "  - cd #{app_name}"
-  say "  - Update config/database.yml with your database credentials"
-  say "  - rails db:create db:migrate"
-  say "  - set your FT_ID and FT_SECRET into your .env with credentials generated here: https://profile.intra.42.fr/oauth/applications"
 end
+
+
+apply_template!
